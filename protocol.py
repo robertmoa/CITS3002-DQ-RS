@@ -39,5 +39,37 @@ class IPPacket:
     pass
 
 class UDPSegment:
-    """need to write the layer 4 UDP segment with rdt2.2 ACK support, checksum is gonna be fked"""
-    pass
+    """need to write the layer 4 UDP segment with rdt2.2 ACK support, checksum is gonna be fked
+    From L8P14, UDP is src_port | dst_port | length | checksum, 8 bytes + seg_type and seq so 10b.
+    Fields:
+        src_port  (int)   : Source port e.g. 5000
+        dst_port  (int)   : Destination port e.g. 80
+        seg_type  (int)   : 0 = DATA, 1 = ACK
+        seq       (int)   : Sequence number - it should be alternating 0 -> 1 -> 0
+        data      (bytes) : Application payload 
+        checksum  (int)   : 16-bit 1's complement checksum, computed on creation
+
+    Header size: 10 bytes total
+    src_port   2 bytes
+    dst_port   2 bytes
+    seg_type   2 bytes
+    seq        2 bytes
+    data       1 bytes
+    checksum   1 bytes
+    """
+    DATA = 0
+    ACK =  1
+
+    def __init__(self, src_port, dst_port, seg_type, seq, data=b""):
+        self.src_port = src_port
+        self.dst_port = dst_port
+        self.seg_type = seg_type
+        self.seq      = seq
+        self.data     = data
+        self.checksum = self.compute_checksum()
+
+    def compute_checksum(self):
+        pass
+
+    def verify_checksum(self):
+        pass
