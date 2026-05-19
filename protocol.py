@@ -36,7 +36,16 @@ class IPPacket:
         self.ttl      = ttl
         self.protocol = protocol
         self.payload  = payload
-    pass
+    
+    @property
+    def total_length(self):
+        """
+        Total packet size in bytes, since we know IP Header is fixed to 10b, 4,4,1,1
+        """
+        IP_HEADER_SIZE = 10
+        return IP_HEADER_SIZE + self.payload.length
+
+
 
 class UDPSegment:
     """need to write the layer 4 UDP segment with rdt2.2 ACK support, checksum is gonna be fked
@@ -68,8 +77,44 @@ class UDPSegment:
         self.data     = data
         self.checksum = self.compute_checksum()
 
+    @property
+    def length(self):
+        HEADER_SIZE = 10
+        return HEADER_SIZE + len(self.data)
+    
     def compute_checksum(self):
-        pass
+        values = [
+            self.src_port,
+            self.dst_port,
+            self.length,
+            self.seg_type,
+            self.seq,
+        ]
+        data = self.data
+        if len(data) % 2 != 0:
+            data = data + b'\x00'
+
+        for i in range(0, len(data), 2):
+            word = (data[i] << 8) + data[i + 1]
+            values.append(word)
+
+        total = sum(values)
+
+        # Carry wraparound
+        while total > 0xFFFF:
+            total = (total & 0xFFFF) + (total >> 16)
+
+        # 1's complement flip
+        return total ^ 0xFFFF
 
     def verify_checksum(self):
-        pass
+        """
+        Recomputes checksum from scratch and compares to stored value.
+        Returns True if valid, False if corrupted.
+        """
+        stored = self.checksum
+        self.checksum = 0
+        recomputed = self.compute_checksum()
+        self.checksum = stored
+        return recomputed == stored
+
