@@ -1,4 +1,4 @@
-from protocol #import EFrame, IPPacket, UDPSegment
+from protocol import EthernetFrame, IPPacket, UDPSegment
 import config
 
 class Host:

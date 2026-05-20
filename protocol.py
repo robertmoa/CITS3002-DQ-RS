@@ -12,7 +12,7 @@ class EthernetFrame:
     """decision to hard code to IPv4"""
     ETPYE_IPV4 = 0x0800
 
-    def __init__(self, dst_mac, src_mac, etype, payload)
+    def __init__(self, dst_mac, src_mac, etype, payload):
         self.dst_mac = dst_mac
         self.src_mac = src_mac
         self.etype   = etype
@@ -30,7 +30,7 @@ class IPPacket:
     
     PROTOCOL_UDP = 17
 
-    def init(self, src_ip, dst_ip, ttl, protocol, payload):
+    def __init__(self, src_ip, dst_ip, ttl, protocol, payload):
         self.src_ip   = src_ip
         self.dst_ip   = dst_ip
         self.ttl      = ttl
