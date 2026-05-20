@@ -12,10 +12,23 @@ class Host:
         self.routing_table = {}
 
     def send(self, dst_ip, data, network):
-        pass
+        if isinstance(data, str):
+            data = data.encode()
+        
+        chunks = [data[i:i + config.MAX_SEGMENT_SIZE] for i in range(0, len(data), config.MAX_SEGMENT_SIZE)]
 
-    def _l4_send(self, dst_ip, chunk, seq, network):
-        pass
+        seq = 0
+        for chunk in chunks:
+            print(f"{self.name}: Layer 4: Data received from Application Layer. Data size={len(chunk)}")
+            self._l4_send(dst_ip, chunk, seq)
+            seq ^= 1
+
+    def _l4_send(self, dst_ip, chunk, seq):
+        while True:
+            segment = UDPSegment(self.src_port, self.dst_port, UDPSegment.DATA, seq, chunk)
+            print(f"{self.name}: Layer 4: Checksum computed")
+            print(f"{self.name}: Layer 4: Segment created by adding transport layer header (DATA, seq=0) (encapsulation)")
+            print(f"{self.name}: Layer 4: Segment sent to Network Layer")
 
     def _l3_send(self, dst_ip, segment, network):
         pass
