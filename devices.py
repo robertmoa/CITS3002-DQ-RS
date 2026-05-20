@@ -10,6 +10,7 @@ class Host:
         self.dst_port = dst_port
         self.mac_table = {}
         self.routing_table = {}
+        self.last_ack = None
 
     def send(self, dst_ip, data, network):
         if isinstance(data, str):
@@ -30,10 +31,40 @@ class Host:
             print(f"{self.name}: Layer 4: Segment created by adding transport layer header (DATA, seq=0) (encapsulation)")
             print(f"{self.name}: Layer 4: Segment sent to Network Layer")
 
-    def _l3_send(self, dst_ip, segment, network):
-        pass
+            self.last_ack = None
+            self._l3_send(dst_ip, segment)
 
-    def _l2_send(self, next_hop_ip, packet, network):
+    def _l3_send(self, dst_ip, segment):
+        packet = IPPacket(self.ip, dst_ip, config.TTL_DEFAULT, IPPacket.PROTOCOL_UDP, segment)
+        print(f"{self.name}: Layer 3: Segment received from Transport Layer: SRC_IP={self.ip}, DST_IP={dst_ip}, TTL={packet.ttl}")
+        print(f"{self.name}: Layer 3: Destination IP read: {dst_ip}")
+
+        next_hop = self._route_lookup(dst_ip)
+        print(f"{self.name}: Layer 3: Routing table lookup performed")
+        print(f"{self.name}: Layer 3: Next-hop IP determined: {next_hop}")
+        print(f"{self.name}: Layer 3: Outgoing interfact selected")
+        print(f"{self.name}: Layer 3: Packet forwarded to Data Link Layer")
+
+        self._l2_send(next_hop, packet)
+
+
+    def _route_lookup(self, dst_ip):
+        for network, next_hop in self.routing_table.items():
+            if self._in_network(dst_ip, network):
+                if next_hop == "direct":
+                    return dst_ip
+                return next_hop
+        return self.routing_table.get("default")
+
+    def _in_network(self, ip, network):
+        if network == "default":
+            return False
+        net_prefix = network.split("/")[0].rsplit(".", 1)[0]
+        ip_prefix = ip.rsplit(".", 1)[0]
+        return net_prefix == ip_prefix
+
+
+    def _l2_send(self, next_hop_ip, packet):
         pass
 
 
