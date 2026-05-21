@@ -1,5 +1,5 @@
 from protocol import EthernetFrame, IPPacket, UDPSegment
-import config
+from config import MAX_SEGMENT_SIZE, TTL_DEFAULT, host_a_mac, host_a_ip, host_b_ip, host_b_mac, r1_iface1_ip, r1_iface1_mac, r1_iface2_ip, r1_iface2_mac
 
 class Host:
     def __init__(self,name,ip,mac,src_port,dst_port):
@@ -16,7 +16,7 @@ class Host:
         if isinstance(data, str):
             data = data.encode()
         
-        chunks = [data[i:i + config.MAX_SEGMENT_SIZE] for i in range(0, len(data), config.MAX_SEGMENT_SIZE)]
+        chunks = [data[i:i + MAX_SEGMENT_SIZE] for i in range(0, len(data), MAX_SEGMENT_SIZE)]
 
         seq = 0
         for chunk in chunks:
@@ -34,7 +34,7 @@ class Host:
             self.last_ack = None
             self._l3_send(dst_ip, segment)
     def _l3_send(self, dst_ip, segment):
-        packet = IPPacket(self.ip, dst_ip, config.TTL_DEFAULT, IPPacket.PROTOCOL_UDP, segment)
+        packet = IPPacket(self.ip, dst_ip, TTL_DEFAULT, IPPacket.PROTOCOL_UDP, segment)
         print(f"{self.name}: Layer 3: Segment received from Transport Layer: SRC_IP={self.ip}, DST_IP={dst_ip}, TTL={packet.ttl}")
         print(f"{self.name}: Layer 3: Destination IP read: {dst_ip}")
 
@@ -107,3 +107,21 @@ class Route:
     def __init__(self,next_hop,interface):
         self.next_hop = next_hop
         self.interface = interface
+
+
+
+#the actual setup of the devices
+hostA = Host("Host-A",host_a_ip,host_a_mac,)
+
+hostB = Host("Host-B",host_b_ip,host_b_mac)
+
+router = Router("R-1")
+router.interfaces = {
+    "i1": Interface(r1_iface1_ip,r1_iface1_mac),
+    "i2": Interface(r1_iface2_ip,r1_iface2_mac)
+
+}
+router.routing_table = {
+"10.0.1.0/24": Route(r1_iface1_ip,router.interfaces["i1"]),
+"10.0.2.0/24": Route(r1_iface2_ip,router.interfaces["i2"])
+}

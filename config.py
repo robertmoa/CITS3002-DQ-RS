@@ -23,17 +23,4 @@ MAX_SEGMENT_SIZE = 500  # bytes, the max 500 req
 
 
 
-hostA = Host("Host-A",host_a_ip,host_a_mac)
 
-hostB = Host("Host-B",host_b_ip,host_b_mac)
-
-router = Router("R-1")
-router.interfaces = {
-    "i1": Interface(r1_iface1_ip,r1_iface1_mac),
-    "i2": Interface(r1_iface2_ip,r1_iface2_mac)
-
-}
-router.routing_table = {
-"10.0.1.0/24": Route(r1_iface1_ip,router.interfaces["i1"]),
-"10.0.2.0/24": Route(r1_iface2_ip,router.interfaces["i2"])
-}
