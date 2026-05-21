@@ -63,7 +63,14 @@ class Host:
 
 
     def _l2_send(self, next_hop_ip, packet):
-        pass
+        print(f"{self.name}: Layer 2: Packet received from Network Layer")
+        dst_mac = self.mac_table[next_hop_ip]
+        print(f"{self.name}: Layer 2: Destination MAC lookup for next-hop IP ({next_hop_ip}) → {dst_mac}")
+
+        frame = EthernetFrame(dst_mac, self.mac, EthernetFrame.ETPYE_IPV4, packet)
+        print(f"{self.name}: Layer 2: Frame created: SRC_MAC={self.mac}, DST_MAC={dst_mac}")
+        print(f"{self.name}: Frame sent")
+        
     def receive(self, frame, network=None):
         pass
 
