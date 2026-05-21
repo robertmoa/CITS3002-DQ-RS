@@ -49,11 +49,11 @@ class Host:
 
     def _route_lookup(self, dst_ip):
         for network, next_hop in self.routing_table.items():
-            if self._in_network(dst_ip, network) == False:
+            if self._in_network(dst_ip, network):
                 if next_hop == "direct":
                     return dst_ip
                 return next_hop
-        return self.routing_table.get("default")
+        return self.routing_table.get("default")  
 
     def _in_network(self, ip, network):
         if network == "default":
@@ -64,22 +64,27 @@ class Host:
 
 
     def _l2_send(self, next_hop_ip, packet):
-        print("\n")
-        print(f"{self.name} Layer 2: Recieved packet from network layer")
-        dest_mac = self.mac_table[next_hop_ip]
-        print(f"{self.name} Layer 2: Destination MAC lookup for next-hop IP ({next_hop_ip}) -> {dest_mac}")
-        src_mac = self.mac
-        frame = EthernetFrame(dest_mac,src_mac,EthernetFrame.ETPYE_IPV4,packet)
-        print(f"{self.name} Layer 2: Frame created: SRC_MAC={self.mac}, DEST_MAC={dest_mac}")
-        print(f"{self.name} Layer 2: Frame sent")
+        print(f"{self.name}: Layer 2: Packet received from Network Layer")
+        dst_mac = self.mac_table[next_hop_ip]
+        print(f"{self.name}: Layer 2: Destination MAC lookup for next-hop IP ({next_hop_ip}) → {dst_mac}")
+
+        frame = EthernetFrame(dst_mac, self.mac, EthernetFrame.ETPYE_IPV4, packet)
+        print(f"{self.name}: Layer 2: Frame created: SRC_MAC={self.mac}, DST_MAC={dst_mac}")
+        print(f"{self.name}: Layer 2: Frame sent\n")
+
         self.link.transmit(frame)
         
         
     def receive(self, frame, network=None):
-        pass
+        self._l2_receive(frame)
 
-    def _l2_receive(self, frame, network):
-        pass
+    def _l2_receive(self, frame):
+        print(f"{self.name}: Layer 2: Frame received")
+        if frame.dst_mac != self.mac:
+            print(f"{self.name}: Layer 2: Not for me, dropping")
+            return
+        print(f"{self.name}: Layer 2: Source MAC learned: {frame.src_mac}")
+        print(f"{self.name}: Layer 2: ✅ Frame successfully arrived at {self.name}!")
 
     def _l3_receive(self, packet):
         pass
@@ -120,21 +125,46 @@ class Router:
             print(f"{self.name}: Layer 3: Packet dropped due to TTL expiry")
             return
        
-        next_hop, out_interface = # to add
+        next_hop, out_interface = self._route_lookup(packet.dst_ip)
         print(f"{self.name}: Layer 3: Routing table lookup performed")
         print(f"{self.name}: Layer 3: Next-hop IP determined: {next_hop}")
         print(f"{self.name}: Layer 3: Outgoing interface selected ({out_interface})")
-        print(f"{self.name}: Layer 3: Packet forwarded to Data Link Layer")
-    def _l2_receive(self, frame, in_interface, network):
-        pass
+        print(f"{self.name}: Layer 3: Packet forwarded to Data Link Layer\n")
+        self._l2_send(next_hop, out_interface, packet) 
 
-    def _l3_receive(self, packet, in_interface):
-        pass
+    def _route_lookup(self, dst_ip):
+        for network, route in self.routing_table.items():
+            if self._in_network(dst_ip, network):
+                if route.next_hop == "direct":
+                    return dst_ip, route.interface
+                return route.next_hop, route.interface
+        return None, None
+
+    def _in_network(self, ip, network):
+        net_prefix = network.split("/")[0].rsplit(".", 1)[0]
+        ip_prefix = ip.rsplit(".", 1)[0]
+        return net_prefix == ip_prefix
 
     def _l2_send(self, next_hop_ip, out_interface, packet):
-        pass
+        print(f"{self.name}: Layer 2: Packet received from Network Layer")
+        dst_mac = self.mac_table[next_hop_ip]
+        src_mac = out_interface.mac                               # ← Interface object's MAC
+        print(f"{self.name}: Layer 2: Destination MAC lookup for next-hop IP ({next_hop_ip}) → {dst_mac}")
 
+        frame = EthernetFrame(dst_mac, src_mac, EthernetFrame.ETPYE_IPV4, packet)
+        print(f"{self.name}: Layer 2: Frame created: SRC_MAC={src_mac}, DST_MAC={dst_mac}")
+        print(f"{self.name}: Layer 2: Frame forwarded")
 
+        # Pick which link to transmit on, based on which interface
+        if out_interface is self.interfaces["i1"]:
+            self.link1.transmit(frame)
+        else:
+            self.link2.transmit(frame)
+
+    def receive_iface2(self, frame, network=None):
+        print("\n")
+        self._l2_receive(frame, "i2")
+        
 class Interface:
     def __init__(self,ip,mac):
         self.ip = ip
@@ -162,8 +192,9 @@ class SubNetLink:
 #the actual setup of the devices
 hostA = Host("Host A",host_a_ip,host_a_mac,5000,80)
 hostA.routing_table = {
-    "direct": r1_iface1_ip
-}
+    "10.0.1.0/24": "direct",
+    "default":     r1_iface1_ip}
+
 hostA.mac_table = {
     r1_iface1_ip: r1_iface1_mac
 }
@@ -178,22 +209,28 @@ hostB.mac_table = {
 
 router = Router("Router R-1")
 router.interfaces = {
-    "i1": Interface(r1_iface1_ip,r1_iface1_mac),
-    "i2": Interface(r1_iface2_ip,r1_iface2_mac)
-
+    "i1": Interface(r1_iface1_ip, r1_iface1_mac),
+    "i2": Interface(r1_iface2_ip, r1_iface2_mac),
 }
 router.routing_table = {
-"10.0.1.0/24": Route(r1_iface1_ip,router.interfaces["i1"]),
-"10.0.2.0/24": Route(r1_iface2_ip,router.interfaces["i2"]),
+    "10.0.1.0/24": Route("direct", router.interfaces["i1"]),
+    "10.0.2.0/24": Route("direct", router.interfaces["i2"]),
 }
+router.mac_table = {
+    host_a_ip: host_a_mac,
+    host_b_ip: host_b_mac,
+}
+
 #Now that devices are set up we can use subnetlinks to connect them
 link_1 = SubNetLink()
 link_2 = SubNetLink()
-link_1.connect(host_a_mac,hostA.receive)
-link_1.connect(r1_iface1_mac,router.receive_iface1)
-link_2.connect(host_b_mac,hostB.receive)
-link_1.connect(r1_iface2_mac,router.receive_iface2)
-hostA.link = link_1
-hostB.link = link_2
+
+link_1.connect(host_a_mac,    hostA.receive)
+link_1.connect(r1_iface1_mac, router.receive_iface1)
+link_2.connect(host_b_mac,    hostB.receive)
+link_2.connect(r1_iface2_mac, router.receive_iface2)
+
+hostA.link  = link_1
+hostB.link  = link_2
 router.link1 = link_1
 router.link2 = link_2
