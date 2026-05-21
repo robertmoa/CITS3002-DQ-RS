@@ -6,6 +6,8 @@ class Host:
         self.name = name
         self.ip = ip
         self.mac = mac
+        #Links set up at runtime
+        self.link = None
         self.src_port = src_port
         self.dst_port = dst_port
         self.mac_table = {}
@@ -24,15 +26,14 @@ class Host:
             seq ^= 1
 
     def _l4_send(self, dst_ip, chunk, seq):
-        while True:
-            segment = UDPSegment(self.src_port, self.dst_port, UDPSegment.DATA, seq, chunk)
-            print(f"{self.name}: Layer 4: Checksum computed")
-            print(f"{self.name}: Layer 4: Segment created by adding transport layer header (DATA, seq=0) (encapsulation)")
-            print(f"{self.name}: Layer 4: Segment sent to Network Layer")
-
-            self.last_ack = None
-            self._l3_send(dst_ip, segment)
+        segment = UDPSegment(self.src_port, self.dst_port, UDPSegment.DATA, seq, chunk)
+        print(f"{self.name}: Layer 4: Checksum computed")
+        print(f"{self.name}: Layer 4: Segment created by adding transport layer header (DATA, seq=0) (encapsulation)")
+        print(f"{self.name}: Layer 4: Segment sent to Network Layer")
+        self.last_ack = None
+        self._l3_send(dst_ip, segment)
     def _l3_send(self, dst_ip, segment):
+        print("\n")
         packet = IPPacket(self.ip, dst_ip, TTL_DEFAULT, IPPacket.PROTOCOL_UDP, segment)
         print(f"{self.name}: Layer 3: Segment received from Transport Layer: SRC_IP={self.ip}, DST_IP={dst_ip}, TTL={packet.ttl}")
         print(f"{self.name}: Layer 3: Destination IP read: {dst_ip}")
@@ -48,7 +49,7 @@ class Host:
 
     def _route_lookup(self, dst_ip):
         for network, next_hop in self.routing_table.items():
-            if self._in_network(dst_ip, network):
+            if self._in_network(dst_ip, network) == False:
                 if next_hop == "direct":
                     return dst_ip
                 return next_hop
@@ -63,7 +64,17 @@ class Host:
 
 
     def _l2_send(self, next_hop_ip, packet):
-        pass
+        print("\n")
+        print(f"{self.name} Layer 2: Recieved packet from network layer")
+        dest_mac = self.mac_table[next_hop_ip]
+        print(f"{self.name} Layer 2: Destination MAC lookup for next-hop IP ({next_hop_ip}) -> {dest_mac}")
+        src_mac = self.mac
+        frame = EthernetFrame(dest_mac,src_mac,EthernetFrame.ETPYE_IPV4,packet)
+        print(f"{self.name} Layer 2: Frame created: SRC_MAC={self.mac}, DEST_MAC={dest_mac}")
+        print(f"{self.name} Layer 2: Frame sent")
+        self.link.transmit(frame)
+        
+        
     def receive(self, frame, network=None):
         pass
 
@@ -79,13 +90,41 @@ class Host:
 
 class Router:
     def __init__(self,name):
+        self.name = name
         self.interfaces = {}
         self.routing_table = {}
         self.mac_table = {}
+        self.link1 = None
+        self.link2 = None
     
-    def receive(self, frame, in_interface, network):
-        pass
-
+    def receive_iface1(self, frame, network=None):
+        print("\n")
+        self._l2_receive(frame)
+        
+    def _l2_receive(self, frame, in_interface):
+        print(f"{self.name}: Layer 2: Frame received on {in_interface} ")
+ 
+        print(f"{self.name}: Layer 2: Source MAC learned: {frame.src_mac} on {in_interface}")
+        print(f"{self.name}: Layer 2: Packet delivered to Network Layer")
+        self._l3_receive(frame.payload, in_interface)
+ 
+    def _l3_receive(self, packet, in_interface):
+        print(f"{self.name}: Layer 3: Packet received from Data Link Layer: "
+              f"SRC_IP={packet.src_ip}, DST_IP={packet.dst_ip}, TTL={packet.ttl}")
+        print(f"{self.name}: Layer 3: Destination IP read: {packet.dst_ip}")
+ 
+        new_ttl = packet.ttl - 1
+        print(f"{self.name}: Layer 3: TTL decremented: {packet.ttl} → {new_ttl}")
+        packet.ttl = new_ttl
+        if packet.ttl <= 0:
+            print(f"{self.name}: Layer 3: Packet dropped due to TTL expiry")
+            return
+       
+        next_hop, out_interface = # to add
+        print(f"{self.name}: Layer 3: Routing table lookup performed")
+        print(f"{self.name}: Layer 3: Next-hop IP determined: {next_hop}")
+        print(f"{self.name}: Layer 3: Outgoing interface selected ({out_interface})")
+        print(f"{self.name}: Layer 3: Packet forwarded to Data Link Layer")
     def _l2_receive(self, frame, in_interface, network):
         pass
 
@@ -107,14 +146,37 @@ class Route:
         self.next_hop = next_hop
         self.interface = interface
 
+class SubNetLink:
+    def __init__(self):
+        self.linked_devices = {}
+    def connect(self,mac,callback_function):
+        self.linked_devices[mac] = callback_function
+    def transmit(self, frame):
+        dst_mac = frame.dst_mac
+
+        if dst_mac in self.linked_devices:
+            self.linked_devices[dst_mac](frame)
+
 
 
 #the actual setup of the devices
-hostA = Host("Host-A",host_a_ip,host_a_mac,5000,80)
+hostA = Host("Host A",host_a_ip,host_a_mac,5000,80)
+hostA.routing_table = {
+    "direct": r1_iface1_ip
+}
+hostA.mac_table = {
+    r1_iface1_ip: r1_iface1_mac
+}
 
-hostB = Host("Host-B",host_b_ip,host_b_mac,80,5000)
+hostB = Host("Host B",host_b_ip,host_b_mac,80,5000)
+hostB.routing_table = {
+    "direct": r1_iface2_ip
+}
+hostB.mac_table = {
+    r1_iface2_ip: r1_iface2_mac
+}
 
-router = Router("R-1")
+router = Router("Router R-1")
 router.interfaces = {
     "i1": Interface(r1_iface1_ip,r1_iface1_mac),
     "i2": Interface(r1_iface2_ip,r1_iface2_mac)
@@ -122,5 +184,16 @@ router.interfaces = {
 }
 router.routing_table = {
 "10.0.1.0/24": Route(r1_iface1_ip,router.interfaces["i1"]),
-"10.0.2.0/24": Route(r1_iface2_ip,router.interfaces["i2"])
+"10.0.2.0/24": Route(r1_iface2_ip,router.interfaces["i2"]),
 }
+#Now that devices are set up we can use subnetlinks to connect them
+link_1 = SubNetLink()
+link_2 = SubNetLink()
+link_1.connect(host_a_mac,hostA.receive)
+link_1.connect(r1_iface1_mac,router.receive_iface1)
+link_2.connect(host_b_mac,hostB.receive)
+link_1.connect(r1_iface2_mac,router.receive_iface2)
+hostA.link = link_1
+hostB.link = link_2
+router.link1 = link_1
+router.link2 = link_2
