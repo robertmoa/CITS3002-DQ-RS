@@ -81,10 +81,10 @@ class Host:
     def _l2_receive(self, frame, network):
         pass
 
-    def _l3_receive(self, packet, network):
+    def _l3_receive(self, packet):
         pass
 
-    def _l4_receive(self, segment, src_ip, network):
+    def _l4_receive(self, segment, src_ip):
         pass
 
 
@@ -128,10 +128,10 @@ class Router:
     def _l2_receive(self, frame, in_interface, network):
         pass
 
-    def _l3_receive(self, packet, in_interface, network):
+    def _l3_receive(self, packet, in_interface):
         pass
 
-    def _l2_send(self, next_hop_ip, out_interface, packet, network):
+    def _l2_send(self, next_hop_ip, out_interface, packet):
         pass
 
 
