@@ -17,7 +17,6 @@ class Host:
             data = data.encode()
         
         chunks = [data[i:i + MAX_SEGMENT_SIZE] for i in range(0, len(data), MAX_SEGMENT_SIZE)]
-
         seq = 0
         for chunk in chunks:
             print(f"{self.name}: Layer 4: Data received from Application Layer. Data size={len(chunk)}")
@@ -111,9 +110,9 @@ class Route:
 
 
 #the actual setup of the devices
-hostA = Host("Host-A",host_a_ip,host_a_mac,)
+hostA = Host("Host-A",host_a_ip,host_a_mac,5000,80)
 
-hostB = Host("Host-B",host_b_ip,host_b_mac)
+hostB = Host("Host-B",host_b_ip,host_b_mac,80,5000)
 
 router = Router("R-1")
 router.interfaces = {

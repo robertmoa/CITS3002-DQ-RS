@@ -1,5 +1,3 @@
-from devices import Host,Router,Interface,Route
-
 
 network1 = "10.0.1.0/24"
 network2 = "10.0.2.0/24"
