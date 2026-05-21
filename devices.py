@@ -32,6 +32,7 @@ class Host:
         print(f"{self.name}: Layer 4: Segment sent to Network Layer")
         self.last_ack = None
         self._l3_send(dst_ip, segment)
+        
     def _l3_send(self, dst_ip, segment):
         print("\n")
         packet = IPPacket(self.ip, dst_ip, TTL_DEFAULT, IPPacket.PROTOCOL_UDP, segment)
