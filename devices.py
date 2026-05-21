@@ -99,7 +99,7 @@ class Router:
     
     def receive_iface1(self, frame, network=None):
         print("\n")
-        self._l2_receive(frame)
+        self._l2_receive(frame,"i1")
         
     def _l2_receive(self, frame, in_interface):
         print(f"{self.name}: Layer 2: Frame received on {in_interface} ")
