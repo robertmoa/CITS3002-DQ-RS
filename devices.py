@@ -71,16 +71,16 @@ class Host:
         print(f"{self.name}: Layer 2: Frame created: SRC_MAC={self.mac}, DST_MAC={dst_mac}")
         print(f"{self.name}: Frame sent")
         
-    def receive(self, frame, network=None):
+    def receive(self, frame):
+        print(f"{self.name}: Layer 2: Frame received on Interface ")
+
+    def _l2_receive(self, frame):
         pass
 
-    def _l2_receive(self, frame, network):
+    def _l3_receive(self, packet):
         pass
 
-    def _l3_receive(self, packet, network):
-        pass
-
-    def _l4_receive(self, segment, src_ip, network):
+    def _l4_receive(self, segment, src_ip):
         pass
 
 
@@ -90,16 +90,16 @@ class Router:
         self.routing_table = {}
         self.mac_table = {}
     
-    def receive(self, frame, in_interface, network):
+    def receive(self, frame, in_interface):
         pass
 
-    def _l2_receive(self, frame, in_interface, network):
+    def _l2_receive(self, frame, in_interface):
         pass
 
-    def _l3_receive(self, packet, in_interface, network):
+    def _l3_receive(self, packet, in_interface):
         pass
 
-    def _l2_send(self, next_hop_ip, out_interface, packet, network):
+    def _l2_send(self, next_hop_ip, out_interface, packet):
         pass
 
 
