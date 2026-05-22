@@ -2,7 +2,7 @@ from protocol import EthernetFrame, IPPacket, UDPSegment
 from config import MAX_SEGMENT_SIZE, TTL_DEFAULT, host_a_mac, host_a_ip, host_b_ip, host_b_mac, r1_iface1_ip, r1_iface1_mac, r1_iface2_ip, r1_iface2_mac
 
 class Host:
-    def __init__(self,name,ip,mac,src_port,dst_port):
+    def __init__(self, name, ip, mac, src_port, dst_port):
         self.name = name
         self.ip = ip
         self.mac = mac
@@ -13,6 +13,7 @@ class Host:
         self.mac_table = {}
         self.routing_table = {}
         self.last_ack = None
+        self.received_data = []
 
     def send(self, dst_ip, data, network):
         if isinstance(data, str):
@@ -29,12 +30,11 @@ class Host:
         segment = UDPSegment(self.src_port, self.dst_port, UDPSegment.DATA, seq, chunk)
         print(f"{self.name}: Layer 4: Checksum computed")
         print(f"{self.name}: Layer 4: Segment created by adding transport layer header (DATA, seq=0) (encapsulation)")
-        print(f"{self.name}: Layer 4: Segment sent to Network Layer")
+        print(f"{self.name}: Layer 4: Segment sent to Network Layer\n")
         self.last_ack = None
         self._l3_send(dst_ip, segment)
         
     def _l3_send(self, dst_ip, segment):
-        print("\n")
         packet = IPPacket(self.ip, dst_ip, TTL_DEFAULT, IPPacket.PROTOCOL_UDP, segment)
         print(f"{self.name}: Layer 3: Segment received from Transport Layer: SRC_IP={self.ip}, DST_IP={dst_ip}, TTL={packet.ttl}")
         print(f"{self.name}: Layer 3: Destination IP read: {dst_ip}")
@@ -43,7 +43,7 @@ class Host:
         print(f"{self.name}: Layer 3: Routing table lookup performed")
         print(f"{self.name}: Layer 3: Next-hop IP determined: {next_hop}")
         print(f"{self.name}: Layer 3: Outgoing interfact selected")
-        print(f"{self.name}: Layer 3: Packet forwarded to Data Link Layer")
+        print(f"{self.name}: Layer 3: Packet forwarded to Data Link Layer\n")
 
         self._l2_send(next_hop, packet)
 
@@ -104,6 +104,31 @@ class Host:
             return
         print(f"{self.name}: Layer 4: Checksum verified")
 
+        if segment.seg_type == UDPSegment.DATA: #Check if is data or ACK.
+            print(f"{self.name}: Layer 4: DATA segment delivered to Application Layer. Data size={len(segment.data)}")
+            self.received_data.append(segment.data)
+            self._send_ack(src_ip, segment.seq)
+        else:  # ACK
+            print(f"{self.name}: Layer 4: ACK received: seq={segment.seq}")
+            self.last_ack = segment.seq
+
+    def _send_ack(self, dst_ip, seq):
+        ack = UDPSegment(self.src_port, self.dst_port, UDPSegment.ACK, seq, b"")
+        print(f"{self.name}: Layer 4: Segment created by adding transport layer header (ACK, seq={seq})")
+        print(f"{self.name}: Layer 4: Segment sent to Network Layer\n")
+
+        packet = IPPacket(self.ip, dst_ip, TTL_DEFAULT, IPPacket.PROTOCOL_UDP, ack)
+        print(f"{self.name}: Layer 3: Segment received from Transport Layer: SRC_IP={self.ip}, DST_IP={dst_ip}, TTL={packet.ttl}")
+        print(f"{self.name}: Layer 3: Destination IP read: {dst_ip}")
+
+        next_hop = self._route_lookup(dst_ip)
+        print(f"{self.name}: Layer 3: Routing table lookup performed")
+        print(f"{self.name}: Layer 3: Next-hop IP determined: {next_hop}")
+        print(f"{self.name}: Layer 3: Outgoing interface selected")
+        print(f"{self.name}: Layer 3: Packet forwarded to Data Link Layer\n")
+
+        self._l2_send(next_hop, packet)
+
 
 class Router:
     def __init__(self,name):
@@ -115,14 +140,13 @@ class Router:
         self.link2 = None
     
     def receive_iface1(self, frame, network=None):
-        print("\n")
         self._l2_receive(frame,"i1")
         
     def _l2_receive(self, frame, in_interface):
         print(f"{self.name}: Layer 2: Frame received on {in_interface} ")
  
         print(f"{self.name}: Layer 2: Source MAC learned: {frame.src_mac} on {in_interface}")
-        print(f"{self.name}: Layer 2: Packet delivered to Network Layer")
+        print(f"{self.name}: Layer 2: Packet delivered to Network Layer\n")
         self._l3_receive(frame.payload, in_interface)
  
     def _l3_receive(self, packet, in_interface):
@@ -174,7 +198,6 @@ class Router:
             self.link2.transmit(frame)
 
     def receive_iface2(self, frame, network=None):
-        print("\n")
         self._l2_receive(frame, "i2")
         
 class Interface:
@@ -213,7 +236,8 @@ hostA.mac_table = {
 
 hostB = Host("Host B",host_b_ip,host_b_mac,80,5000)
 hostB.routing_table = {
-    "direct": r1_iface2_ip
+    "10.0.2.0/24": "direct",
+    "default": r1_iface2_ip
 }
 hostB.mac_table = {
     r1_iface2_ip: r1_iface2_mac
