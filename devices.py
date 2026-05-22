@@ -27,12 +27,17 @@ class Host:
             seq ^= 1
 
     def _l4_send(self, dst_ip, chunk, seq):
-        segment = UDPSegment(self.src_port, self.dst_port, UDPSegment.DATA, seq, chunk)
-        print(f"{self.name}: Layer 4: Checksum computed")
-        print(f"{self.name}: Layer 4: Segment created by adding transport layer header (DATA, seq=0) (encapsulation)")
-        print(f"{self.name}: Layer 4: Segment sent to Network Layer\n")
-        self.last_ack = None
-        self._l3_send(dst_ip, segment)
+        while True:
+            segment = UDPSegment(self.src_port, self.dst_port, UDPSegment.DATA, seq, chunk)
+            print(f"{self.name}: Layer 4: Checksum computed")
+            print(f"{self.name}: Layer 4: Segment created with header (DATA, seq={seq}) (encapsulation)")
+            print(f"{self.name}: Layer 4: Segment sent to Network Layer\n")
+            self._l3_send(dst_ip, segment)
+            # ACK arrives synchronously during _l3_send via call stack, so last_ack is set by here
+            if self.last_ack == seq:
+                print(f"{self.name}: Layer 4: Correct ACK received (seq={seq}), moving on\n")
+                break
+            print(f"{self.name}: Layer 4: Wrong/no ACK — retransmitting seq={seq}\n")
         
     def _l3_send(self, dst_ip, segment):
         packet = IPPacket(self.ip, dst_ip, TTL_DEFAULT, IPPacket.PROTOCOL_UDP, segment)
