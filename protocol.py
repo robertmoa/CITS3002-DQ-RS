@@ -61,10 +61,11 @@ class UDPSegment:
     Header size: 10 bytes total
     src_port   2 bytes
     dst_port   2 bytes
-    seg_type   2 bytes
-    seq        2 bytes
-    data       1 bytes
-    checksum   1 bytes
+    length     2 bytes
+    checksum   2 bytes
+    seg_type   1 byte
+    seq        1 byte
+    data       variable
     """
     DATA = 0
     ACK =  1
