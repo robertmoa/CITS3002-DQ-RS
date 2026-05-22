@@ -14,6 +14,7 @@ class Host:
         self.routing_table = {}
         self.last_ack = None
         self.received_data = []
+        self.last_received_seq = None
 
     def send(self, dst_ip, data):
         if isinstance(data, str):
@@ -28,6 +29,7 @@ class Host:
 
     def _l4_send(self, dst_ip, chunk, seq):
         while True:
+            self.last_ack = None
             segment = UDPSegment(self.src_port, self.dst_port, UDPSegment.DATA, seq, chunk)
             print(f"{self.name}: Layer 4: Checksum computed")
             print(f"{self.name}: Layer 4: Segment created with header (DATA, seq={seq}) (encapsulation)")
@@ -37,7 +39,7 @@ class Host:
             if self.last_ack == seq:
                 print(f"{self.name}: Layer 4: Correct ACK received (seq={seq}), moving on\n")
                 break
-            print(f"{self.name}: Layer 4: Wrong/no ACK — retransmitting seq={seq}\n")
+            print(f"{self.name}: Layer 4: Wrong/no ACK (got {self.last_ack}, expected {seq}) — retransmitting\n")
         
     def _l3_send(self, dst_ip, segment):
         packet = IPPacket(self.ip, dst_ip, TTL_DEFAULT, IPPacket.PROTOCOL_UDP, segment)
@@ -106,18 +108,27 @@ class Host:
 
         if not segment.verify_checksum():
             print(f"{self.name}: Layer 4: Segment has been discarded due to failure of checksum")
+            if segment.seg_type == UDPSegment.DATA and self.last_received_seq is not None:
+                print(f"{self.name}: Layer 4: Re-sending ACK for last good seq={self.last_received_seq}")
+                self._send_ack(src_ip, self.last_received_seq)
             return
         print(f"{self.name}: Layer 4: Checksum verified")
 
-        if segment.seg_type == UDPSegment.DATA: #Check if is data or ACK.
-            print(f"{self.name}: Layer 4: DATA segment delivered to Application Layer. Data size={len(segment.data)}")
-            self.received_data.append(segment.data)
-            self._send_ack(src_ip, segment.seq, segment.dst_port, segment.src_port)
+        if segment.seg_type == UDPSegment.DATA:
+            if segment.seq == self.last_received_seq:
+                # Duplicate — don't redeliver, just re-ACK
+                print(f"{self.name}: Layer 4: Duplicate seq={segment.seq} — re-sending ACK without delivering")
+                self._send_ack(src_ip, self.last_received_seq)
+            else:
+                print(f"{self.name}: Layer 4: DATA segment delivered to Application Layer. Data size={len(segment.data)}")
+                self.received_data.append(segment.data)
+                self.last_received_seq = segment.seq
+                self._send_ack(src_ip, self.last_received_seq)
         else:  # ACK
             print(f"{self.name}: Layer 4: ACK received: seq={segment.seq}")
             self.last_ack = segment.seq
 
-    def _send_ack(self, dst_ip, seq, src_port, dst_port):
+    def _send_ack(self, dst_ip, seq):
         ack = UDPSegment(self.src_port, self.dst_port, UDPSegment.ACK, seq, b"")
         print(f"{self.name}: Layer 4: Segment created by adding transport layer header (ACK, seq={seq})")
         print(f"{self.name}: Layer 4: Segment sent to Network Layer\n")
