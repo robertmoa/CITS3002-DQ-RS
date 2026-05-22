@@ -38,8 +38,9 @@ MACs and routing tables are hardcoded in `config.py` and `devices.py`.
 
 **L2 (Data Link).** The packet is wrapped in an `EthernetFrame` with src/dst MAC. The next-hop IP is mapped to a MAC via the device's MAC table (hardcoded, acts as a startic ARP). Frames are delivered over `SubNetLink`, which dispatches to the device whose MAC matches the frame's destination. Frames not addressed to the receiver are dropped.
 
-**Reliable delivery (rdt2.2)** Receiver verifies the checksum. TO IMPLEMENT
+**Reliable delivery (rdt2.2)** Receiver verifies the checksum; corrupted segments are discarded and the last good ACK is re-sent. Duplicate seq -> re-ACK without redelivery, Sender blocks on `last_ack` and retransmits on wrong/missing ACK.
 
 ## Assumptions
 
 - Simulation is synchronous: an ACK comes back up the call stack before `_l4_send` checks `last_ack`. No threading nor timer needed.
+- Another assumption since the testing mention was using `python main.py 100`, we assume that `TTL=1` would not be a method of testing for <=0 for it.
