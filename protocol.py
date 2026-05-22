@@ -10,7 +10,7 @@ class EthernetFrame:
     """
 
     """decision to hard code to IPv4"""
-    ETPYE_IPV4 = 0x0800
+    ETYPE_IPV4 = 0x0800
 
     def __init__(self, dst_mac, src_mac, etype, payload):
         self.dst_mac = dst_mac

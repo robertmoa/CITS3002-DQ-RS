@@ -11,7 +11,6 @@ r1_iface2_ip = "10.0.2.1"   # Router R1, subnet 2 side
 
 host_a_mac = "AA:AA:AA:AA:AA:AA"
 host_b_mac = "DD:DD:DD:DD:DD:DD"
-
 r1_iface1_mac = "BB:BB:BB:BB:BB:BB"
 r1_iface2_mac = "CC:CC:CC:CC:CC:CC"
 
