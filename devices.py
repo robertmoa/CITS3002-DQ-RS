@@ -232,51 +232,55 @@ class SubNetLink:
             self.linked_devices[dst_mac](frame)
 
 
+def build_topology():
+    #the actual setup of the devices
+    hostA = Host("Host A",host_a_ip,host_a_mac,5000,80)
+    hostA.routing_table = {
+        "10.0.1.0/24": "direct",
+        "default":     r1_iface1_ip}
 
-#the actual setup of the devices
-hostA = Host("Host A",host_a_ip,host_a_mac,5000,80)
-hostA.routing_table = {
-    "10.0.1.0/24": "direct",
-    "default":     r1_iface1_ip}
+    hostA.mac_table = {
+        r1_iface1_ip: r1_iface1_mac
+    }
 
-hostA.mac_table = {
-    r1_iface1_ip: r1_iface1_mac
-}
+    hostB = Host("Host B",host_b_ip,host_b_mac,80,5000)
+    hostB.routing_table = {
+        "10.0.2.0/24": "direct",
+        "default": r1_iface2_ip
+    }
+    hostB.mac_table = {
+        r1_iface2_ip: r1_iface2_mac
+    }
 
-hostB = Host("Host B",host_b_ip,host_b_mac,80,5000)
-hostB.routing_table = {
-    "10.0.2.0/24": "direct",
-    "default": r1_iface2_ip
-}
-hostB.mac_table = {
-    r1_iface2_ip: r1_iface2_mac
-}
+    router = Router("Router R-1")
+    router.interfaces = {
+        "i1": Interface("Interface 1", r1_iface1_ip, r1_iface1_mac),
+        "i2": Interface("Interface 2", r1_iface2_ip, r1_iface2_mac),
+    }
 
-router = Router("Router R-1")
-router.interfaces = {
-    "i1": Interface("Interface 1", r1_iface1_ip, r1_iface1_mac),
-    "i2": Interface("Interface 2", r1_iface2_ip, r1_iface2_mac),
-}
+    router.routing_table = {
+        "10.0.1.0/24": Route("direct", router.interfaces["i1"]),
+        "10.0.2.0/24": Route("direct", router.interfaces["i2"]),
+    }
+    router.mac_table = {
+        host_a_ip: host_a_mac,
+        host_b_ip: host_b_mac,
+    }
 
-router.routing_table = {
-    "10.0.1.0/24": Route("direct", router.interfaces["i1"]),
-    "10.0.2.0/24": Route("direct", router.interfaces["i2"]),
-}
-router.mac_table = {
-    host_a_ip: host_a_mac,
-    host_b_ip: host_b_mac,
-}
+    #Now that devices are set up we can use subnetlinks to connect them
+    link_1 = SubNetLink()
+    link_2 = SubNetLink()
 
-#Now that devices are set up we can use subnetlinks to connect them
-link_1 = SubNetLink()
-link_2 = SubNetLink()
+    link_1.connect(host_a_mac,    hostA.receive)
+    link_1.connect(r1_iface1_mac, router.receive_iface1)
+    link_2.connect(host_b_mac,    hostB.receive)
+    link_2.connect(r1_iface2_mac, router.receive_iface2)
 
-link_1.connect(host_a_mac,    hostA.receive)
-link_1.connect(r1_iface1_mac, router.receive_iface1)
-link_2.connect(host_b_mac,    hostB.receive)
-link_2.connect(r1_iface2_mac, router.receive_iface2)
+    hostA.link  = link_1
+    hostB.link  = link_2
+    router.link1 = link_1
+    router.link2 = link_2
 
-hostA.link  = link_1
-hostB.link  = link_2
-router.link1 = link_1
-router.link2 = link_2
+    return hostA, hostB, router
+
+hostA, hostB, router = build_topology()
