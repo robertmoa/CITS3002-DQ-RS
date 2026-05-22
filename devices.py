@@ -85,13 +85,24 @@ class Host:
             print(f"{self.name}: Layer 2: Not for me, dropping")
             return
         print(f"{self.name}: Layer 2: Source MAC learned: {frame.src_mac}")
-        print(f"{self.name}: Layer 2: ✅ Frame successfully arrived at {self.name}!")
+        print(f"{self.name}: Layer 2: Packet delivered to Network Layer\n")
+        self._l3_receive(frame.payload)
 
     def _l3_receive(self, packet):
-        pass
+        print(f"{self.name}: Layer 3: Packet received from Data Link Layer: SRC_IP={packet.src_ip}, DST_IP={packet.dst_ip}, TTL={packet.ttl}")
+        print(f"{self.name}: Layer 3: Destination IP read: {packet.dst_ip}")
+        if packet.dst_ip == self.ip:
+            print(f"{self.name}: Layer 3: Packet identified as local delivery")
+            print(f"{self.name}: Layer 3: Segment delivered to Transport Layer\n")
+            self._l4_receive(packet.payload, packet.src_ip)
 
     def _l4_receive(self, segment, src_ip):
-        pass
+        print(f"{self.name}: Layer 4: Segment received from Network Layer")
+
+        if not segment.verify_checksum():
+            print(f"{self.name}: Layer 4: Segment has been discarded due to failure of checksum")
+            return
+        print(f"{self.name}: Layer 4: Checksum verified")
 
 
 class Router:
@@ -154,7 +165,7 @@ class Router:
 
         frame = EthernetFrame(dst_mac, src_mac, EthernetFrame.ETPYE_IPV4, packet)
         print(f"{self.name}: Layer 2: Frame created: SRC_MAC={src_mac}, DST_MAC={dst_mac}")
-        print(f"{self.name}: Layer 2: Frame forwarded")
+        print(f"{self.name}: Layer 2: Frame forwarded\n")
 
         # Pick which link to transmit on, based on which interface
         if out_interface is self.interfaces["i1"]:
