@@ -226,7 +226,7 @@ class Interface:
         self.ip = ip
         self.mac = mac
 
-#routes to intefaces based on next_hop
+#routes to interfaces based on next_hop
 class Route:
     def __init__(self,next_hop,interface):
         self.next_hop = next_hop
