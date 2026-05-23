@@ -14,8 +14,12 @@ host_b_mac = "DD:DD:DD:DD:DD:DD"
 r1_iface1_mac = "BB:BB:BB:BB:BB:BB"
 r1_iface2_mac = "CC:CC:CC:CC:CC:CC"
 
+# hardcoded variables
 TTL_DEFAULT = 100
 MAX_SEGMENT_SIZE = 500  # bytes, the max 500 req
+ETYPE_IPV4 = 0x0800
+IP_HEADER_SIZE = 10
+PROTOCOL_UDP = 17
 
 
 

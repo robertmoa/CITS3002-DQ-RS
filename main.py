@@ -1,6 +1,8 @@
 import sys
-from devices import hostA, hostB, router
+from devices import build_topology
 from config import host_b_ip
+
+hostA, hostB, router = build_topology()
 
 if len(sys.argv) != 2:
     print("Usage: python main.py <message_size_in_bytes>")

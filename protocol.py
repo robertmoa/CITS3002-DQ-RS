@@ -1,3 +1,4 @@
+from config import IP_HEADER_SIZE,PROTOCOL_UDP,ETYPE_IPV4
 class EthernetFrame:
     """
     Layer 2 Ethernet ish frame. Refer to L3P7 for format
@@ -9,8 +10,8 @@ class EthernetFrame:
         payload       : The IPPacket itself wrapped within this frame
     """
 
-    """decision to hard code to IPv4"""
-    ETYPE_IPV4 = 0x0800
+    
+    
 
     def __init__(self, dst_mac, src_mac, etype, payload):
         self.dst_mac = dst_mac
@@ -28,7 +29,7 @@ class IPPacket:
         payload         : The UDPSegment object wrapped inside this packet
     """
     
-    PROTOCOL_UDP = 17
+    
 
     def __init__(self, src_ip, dst_ip, ttl, protocol, payload):
         self.src_ip   = src_ip
@@ -42,7 +43,7 @@ class IPPacket:
         """
         Total packet size in bytes, since we know IP Header is fixed to 10b, 4,4,1,1
         """
-        IP_HEADER_SIZE = 10
+        
         return IP_HEADER_SIZE + self.payload.length
 
 

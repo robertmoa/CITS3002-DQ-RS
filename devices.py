@@ -1,6 +1,7 @@
 from protocol import EthernetFrame, IPPacket, UDPSegment
-from config import MAX_SEGMENT_SIZE, TTL_DEFAULT, host_a_mac, host_a_ip, host_b_ip, host_b_mac, r1_iface1_ip, r1_iface1_mac, r1_iface2_ip, r1_iface2_mac
+from config import MAX_SEGMENT_SIZE, TTL_DEFAULT, ETYPE_IPV4, PROTOCOL_UDP, host_a_mac, host_a_ip, host_b_ip, host_b_mac, r1_iface1_ip, r1_iface1_mac, r1_iface2_ip, r1_iface2_mac
 
+### Implements Host, Router, Interface, Route, and SubnetLink classes.
 class Host:
     def __init__(self, name, ip, mac, src_port, dst_port):
         self.name = name
@@ -15,7 +16,7 @@ class Host:
         self.last_ack = None
         self.received_data = []
         self.last_received_seq = None
-
+    #this is called by main, and by hostB when sending back the ack
     def send(self, dst_ip, data):
         if isinstance(data, str):
             data = data.encode()
@@ -42,7 +43,7 @@ class Host:
             print(f"{self.name}: Layer 4: Wrong/no ACK (got {self.last_ack}, expected {seq}) — retransmitting")
         
     def _l3_send(self, dst_ip, segment):
-        packet = IPPacket(self.ip, dst_ip, TTL_DEFAULT, IPPacket.PROTOCOL_UDP, segment)
+        packet = IPPacket(self.ip, dst_ip, TTL_DEFAULT, PROTOCOL_UDP, segment)
         print(f"{self.name}: Layer 3: Segment received from Transport Layer: SRC_IP={self.ip}, DST_IP={dst_ip}, TTL={packet.ttl}")
         print(f"{self.name}: Layer 3: Destination IP read: {dst_ip}")
 
@@ -76,7 +77,7 @@ class Host:
         dst_mac = self.mac_table[next_hop_ip]
         print(f"{self.name}: Layer 2: Destination MAC lookup for next-hop IP ({next_hop_ip}) → {dst_mac}")
 
-        frame = EthernetFrame(dst_mac, self.mac, EthernetFrame.ETYPE_IPV4, packet)
+        frame = EthernetFrame(dst_mac, self.mac, ETYPE_IPV4, packet)
         print(f"{self.name}: Layer 2: Frame created: SRC_MAC={self.mac}, DST_MAC={dst_mac}")
         print(f"{self.name}: Layer 2: Frame sent")
 
@@ -133,7 +134,7 @@ class Host:
         print(f"{self.name}: Layer 4: Segment created by adding transport layer header (ACK, seq={seq})")
         print(f"{self.name}: Layer 4: Segment sent to Network Layer")
 
-        packet = IPPacket(self.ip, dst_ip, TTL_DEFAULT, IPPacket.PROTOCOL_UDP, ack)
+        packet = IPPacket(self.ip, dst_ip, TTL_DEFAULT, PROTOCOL_UDP, ack)
         print(f"{self.name}: Layer 3: Segment received from Transport Layer: SRC_IP={self.ip}, DST_IP={dst_ip}, TTL={packet.ttl}")
         print(f"{self.name}: Layer 3: Destination IP read: {dst_ip}")
 
@@ -209,7 +210,7 @@ class Router:
         src_mac = out_interface.mac                               # ← Interface object's MAC
         print(f"{self.name}: Layer 2: Destination MAC lookup for next-hop IP ({next_hop_ip}) → {dst_mac}")
 
-        frame = EthernetFrame(dst_mac, src_mac, EthernetFrame.ETYPE_IPV4, packet)
+        frame = EthernetFrame(dst_mac, src_mac, ETYPE_IPV4, packet)
         print(f"{self.name}: Layer 2: Frame created: SRC_MAC={src_mac}, DST_MAC={dst_mac}")
         print(f"{self.name}: Layer 2: Frame forwarded on {out_interface.name}")
 
@@ -225,12 +226,16 @@ class Interface:
         self.ip = ip
         self.mac = mac
 
-#routes to subnets
+#routes to intefaces based on next_hop
 class Route:
     def __init__(self,next_hop,interface):
         self.next_hop = next_hop
         self.interface = interface
 
+
+#This class allows nodes to communicate with eachother, like a cable
+#connect is used to link a destination mac address with a recieve function, i.e hostA's MAC with their recieve function
+#transmit is called by nodes on their links. the frames destination mac is then used as the key in linked_devices, in order to call the correct recieve function
 class SubNetLink:
     def __init__(self):
         self.linked_devices = {}
@@ -245,6 +250,8 @@ class SubNetLink:
 
 def build_topology():
     #the actual setup of the devices
+
+    #hostA, routing table for subnet (router interface1), mac table links interface1 ip to interface1 mac
     hostA = Host("Host A",host_a_ip,host_a_mac,5000,80)
     hostA.routing_table = {
         "10.0.1.0/24": "direct",
@@ -253,7 +260,7 @@ def build_topology():
     hostA.mac_table = {
         r1_iface1_ip: r1_iface1_mac
     }
-
+    #similarly for hostB
     hostB = Host("Host B",host_b_ip,host_b_mac,80,5000)
     hostB.routing_table = {
         "10.0.2.0/24": "direct",
@@ -263,6 +270,7 @@ def build_topology():
         r1_iface2_ip: r1_iface2_mac
     }
 
+    #router is its own class, has 2 interfaces, otherwise similar setup to hA and hB
     router = Router("Router R1")
     router.interfaces = {
         "i1": Interface("Interface 1", r1_iface1_ip, r1_iface1_mac),
@@ -281,12 +289,12 @@ def build_topology():
     #Now that devices are set up we can use subnetlinks to connect them
     link_1 = SubNetLink()
     link_2 = SubNetLink()
-
+    #connects devices to the links, passing their respective receive functions
     link_1.connect(host_a_mac,    hostA.receive)
     link_1.connect(r1_iface1_mac, router.receive_iface1)
     link_2.connect(host_b_mac,    hostB.receive)
     link_2.connect(r1_iface2_mac, router.receive_iface2)
-
+    #then sets the link variables in the objects so that they can call transmit
     hostA.link  = link_1
     hostB.link  = link_2
     router.link1 = link_1
@@ -294,4 +302,3 @@ def build_topology():
 
     return hostA, hostB, router
 
-hostA, hostB, router = build_topology()

@@ -6,13 +6,13 @@ A Python simulation of L2/L3/L4 networking. Sends data from Host A -> Router R1 
 ## Run
 
 ```bash
-python main.py
+python main.py (data size in bytes)
 ```
 
 Example:
 ```bash
 python main.py 100   # Runs a single segment
-python main.py 1200  # Runs three segments
+python main.py 1200  # Runs three segments (500 bytes, 500 bytes, then 200 bytes)
 ```
 
 Output is a per-layer log of every step. Matching word for word format to the specification provided.
